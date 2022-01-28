@@ -1,0 +1,611 @@
+---
+title: "2022_01_25_0913-compare_STARrelax_vs_qPCR"
+author: "Ming"
+date: "`r format(Sys.time(), '%Y_%m_%d_%H_%M')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+require(tidyverse)
+require(ggplot2)
+'%ni%' <- Negate('%in%')
+```
+
+# read in data
+
+```{r}
+data.dir = "/Users/minghan/bioinfoproj/FAM72_homolog/pipelinesuite_STARrelax_output/"
+```
+
+## TPM gene expr
+
+```{r}
+TPM_1 = 
+  read.table(file = paste0(data.dir, "2022-01-20_FAM72_STARrelax_try1_test_gene_expression_TPM.tsv"), header = T) %>% 
+  filter(str_detect(Symbol, "FAM72"))
+TPM_2 = 
+  read.table(file = paste0(data.dir, "2022-01-25_FAM72_try2_STARrelax_allSamples_gene_expression_TPM.tsv"), header = T) %>% 
+  filter(str_detect(Symbol, "FAM72")) %>% 
+  select(-X293T_S44_L001)
+TPM_2
+
+TPM_gene = 
+  left_join(TPM_1, TPM_2, by = c("GeneID", "Symbol")) %>% 
+  arrange(Symbol) %>% 
+  select(-GeneID)
+TPM_gene %>% print.data.frame()
+#   Symbol X293T_S44_L001 X293T_S44_L002 A549_S43_L001 A549_S43_L002 Daudi_S41_L001 Daudi_S41_L002 HCT116_S40_L001 HCT116_S40_L002 MDA231_S42_L001 MDA231_S42_L002 SW480_S39_L001 SW480_S39_L002
+# 1 FAM72A          13.29          11.34          4.98          4.14          22.47          25.46            6.53            7.11           11.25           10.44          13.88          12.04
+# 2 FAM72B          11.97          13.26          5.54          6.21          23.81          26.12            4.08            3.24           12.74           14.37           3.46           3.33
+# 3 FAM72C           4.71           3.11          3.64          3.74          14.01          10.59            1.67            3.14            9.74            9.03           0.00           0.00
+# 4 FAM72D           7.75          11.72          4.83          4.74          13.63          11.69            5.19            5.48            7.06            6.01           5.54           5.50
+TPM_gene.t = 
+  as.tibble(t(TPM_gene %>% column_to_rownames("Symbol")), rownames = "Samples")
+# TPM_gene.t
+
+# write.csv(x = TPM_gene.t, file = paste0(data.dir, "wrangled_data/TPM_gene.FAM72.t.csv"), quote = F, row.names = F)
+```
+
+## TPM_for_cbioportal mRNA expr
+
+```{r}
+TPM_for_cbioportal_1 = 
+  read.table(file = paste0(data.dir, "2022-01-20_FAM72_STARrelax_try1_test_mRNA_expression_TPM_for_cbioportal.tsv"), header = T) %>% 
+  filter(str_detect(Symbol, "FAM72"))
+TPM_for_cbioportal_1
+
+TPM_for_cbioportal_2 = 
+  read.table(file = paste0(data.dir, "2022-01-25_FAM72_try2_STARrelax_allSamples_mRNA_expression_TPM_for_cbioportal.tsv"), header = T) %>% 
+  filter(str_detect(Symbol, "FAM72")) %>% 
+  select(-X293T_S44_L001)
+TPM_for_cbioportal_2
+
+TPM_mRNA = 
+  left_join(TPM_for_cbioportal_1, TPM_for_cbioportal_2, by = c("GeneID", "Symbol")) %>% 
+  arrange(Symbol) %>% 
+  select(-GeneID)
+TPM_mRNA %>% print.data.frame()
+#   Symbol X293T_S44_L001 X293T_S44_L002 A549_S43_L001 A549_S43_L002 Daudi_S41_L001 Daudi_S41_L002 HCT116_S40_L001 HCT116_S40_L002 MDA231_S42_L001 MDA231_S42_L002 SW480_S39_L001 SW480_S39_L002
+# 1 FAM72A       3.732269       3.503349      2.316146      2.049631       4.489928       4.670161       2.7070830        2.829850        3.491853        3.384050       3.794936       3.589763
+# 2 FAM72B       3.581351       3.729009      2.469886      2.634593       4.573496       4.707083       2.0285692        1.695994        3.671293        3.844988       1.790772       1.735522
+# 3 FAM72C       2.235727       1.636915      1.863938      1.903038       3.808385       3.404631       0.7398481        1.650765        3.283922        3.174726             NA             NA
+# 4 FAM72D       2.954196       3.550901      2.272023      2.244887       3.768714       3.547203       2.3757345        2.454176        2.819668        2.587365       2.469886       2.459432
+
+TPM_mRNA.t = 
+  as.tibble(t(TPM_mRNA %>% column_to_rownames("Symbol")), rownames = "Samples")
+# TPM_mRNA.t
+
+# write.csv(x = TPM_mRNA.t, file = paste0(data.dir, "wrangled_data//TPM_mRNA.FAM72.t.csv"), quote = F, row.names = F)
+```
+
+## FPKM
+
+```{r}
+load(paste0(data.dir, "2022-01-20_FAM72_STARrelax_try1_test_rsem_expression_results.RData"))
+genes.formatted_1 = genes.formatted
+load(paste0(data.dir, "2022-01-25_FAM72_try2_STARrelax_allSamples_rsem_expression_results.RData"))
+genes.formatted_2 = genes.formatted
+
+FPKM = 
+  left_join(genes.formatted_1$fpkm, genes.formatted_2$fpkm %>% select(-`293T_S44_L001`), by = c("GeneID", "Symbol"))
+FPKM
+
+# write.csv(x = FPKM, file = paste0(data.dir, "wrangled_data/FPKM.csv"), quote = F, row.names = F)
+
+FPKM.FAM72 =
+  FPKM %>% 
+  filter(str_detect(Symbol, "FAM72"))
+
+FPKM.FAM72.t =
+  as.tibble(t(FPKM.FAM72 %>% column_to_rownames("Symbol") %>% select(-GeneID)), rownames = "Samples")
+
+# write.csv(x = FPKM.FAM72.t, file = paste0(data.dir, "wrangled_data/FPKM.FAM72.t.csv"), quote = F, row.names = F)
+```
+
+## RSEM expected_count
+
+```{r}
+expected_count = 
+  left_join(genes.formatted_1$expected_count, genes.formatted_2$expected_count %>% select(-`293T_S44_L001`), by = c("GeneID", "Symbol"))
+expected_count
+
+# write.csv(x = expected_count, file = paste0(data.dir, "wrangled_data/expected_count.csv"), quote = F, row.names = F)
+
+expected_count.FAM72 =
+  expected_count %>% 
+  filter(str_detect(Symbol, "FAM72"))
+
+expected_count.FAM72.t =
+  as.tibble(t(expected_count.FAM72 %>% column_to_rownames("Symbol") %>% select(-GeneID)), rownames = "Samples")
+
+# write.csv(x = expected_count.FAM72.t, file = paste0(data.dir, "wrangled_data/expected_count.FAM72.t.csv"), quote = F, row.names = F)
+```
+
+# --------------------------------------------
+
+# compare
+
+## read in qPCR results
+
+```{r}
+fam72_qPCR.t = 
+  read.csv(file = "/Users/minghan/GDrive_minghanpughlab/PughLabPMH/_projects/homolog_seq/data/fam72_qPCR.t.csv") %>% 
+  filter(., apply(., 1, function(a_row) all(!is.na(a_row))))
+# fam72_qPCR.t
+```
+
+## try TPM
+
+### get replicate mean
+
+```{r}
+fam72_qPCR =
+  as.tibble(t(fam72_qPCR.t %>% column_to_rownames(var="Samples")), rownames = "Symbol")
+fam72_qPCR.mean = 
+  fam72_qPCR %>% 
+  mutate(X293_mean = rowMeans(dplyr::select(., starts_with("293")), na.rm = TRUE)) %>% 
+  mutate(A549_mean = rowMeans(dplyr::select(., starts_with("A549")), na.rm = TRUE)) %>% 
+  mutate(Daudi_mean = rowMeans(dplyr::select(., starts_with("Daudi")), na.rm = TRUE)) %>% 
+  mutate(HCT116_mean = rowMeans(dplyr::select(., starts_with("HCT116")), na.rm = TRUE)) %>% 
+  mutate(MDA231_mean = rowMeans(dplyr::select(., starts_with("MDA 231")), na.rm = TRUE)) %>% 
+  mutate(SW480_mean = rowMeans(dplyr::select(., starts_with("SW480")), na.rm = TRUE)) %>% 
+  dplyr::select(Symbol, ends_with("mean"))
+
+TPM_gene.mean = 
+  TPM_gene %>% 
+  mutate(X293_mean = rowMeans(dplyr::select(., starts_with("X293")), na.rm = TRUE)) %>% 
+  mutate(A549_mean = rowMeans(dplyr::select(., starts_with("A549")), na.rm = TRUE)) %>% 
+  mutate(Daudi_mean = rowMeans(dplyr::select(., starts_with("Daudi")), na.rm = TRUE)) %>% 
+  mutate(HCT116_mean = rowMeans(dplyr::select(., starts_with("HCT116")), na.rm = TRUE)) %>% 
+  mutate(MDA231_mean = rowMeans(dplyr::select(., starts_with("MDA231")), na.rm = TRUE)) %>% 
+  mutate(SW480_mean = rowMeans(dplyr::select(., starts_with("SW480")), na.rm = TRUE)) %>% 
+  dplyr::select(Symbol, ends_with("mean"))
+
+fam72_qPCR.mean.long = 
+  fam72_qPCR.mean %>% 
+  pivot_longer(cols = -Symbol, names_to = "Cell_line", values_to = "qPCR_mean") %>% 
+  unite(col = "Symbol_Cell_line", Symbol, Cell_line, sep = "__", remove = F)
+
+TPM_gene.mean.long = 
+  TPM_gene.mean %>% 
+  pivot_longer(cols = -Symbol, names_to = "Cell_line", values_to = "TPMgene_mean") %>% 
+  unite(col = "Symbol_Cell_line", Symbol, Cell_line, sep = "__", remove = F)
+```
+
+### compare
+
+#### raw values (good)
+
+```{r}
+fam72_qPCR_TPMgene_mean.joined = 
+  left_join(fam72_qPCR.mean.long, TPM_gene.mean.long, by=c("Symbol_Cell_line", "Symbol", "Cell_line"))
+# fam72_qPCR_TPMgene_mean.joined
+
+library(ggpubr)
+```
+
+##### all (R=0.89, p=6.5e-09)
+
+```{r}
+fam72_qPCR_TPMgene_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=TPMgene_mean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson") +
+  labs(title = "STAR relax parameters\nTPM vs qPCR FAM72 homolog expression correlation")
+
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMvsQPCR_FAM72expr.pdf"),
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+##### grouped by 'Cell_line'
+
+```{r}
+fam72_qPCR_TPMgene_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=TPMgene_mean, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson") +
+  labs(title = "STAR relax parameters\nTPM vs qPCR FAM72 homolog expression correlation\nby cell line")
+## p-value non-sig cuz too little samples
+
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMvsQPCR_FAM72expr_byCellLine.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+##### grouped by 'Symbol' (FAM72D: R=0.63, p=0.18)
+
+```{r}
+fam72_qPCR_TPMgene_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=TPMgene_mean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson") +
+  labs(title = "STAR relax parameters\nTPM vs qPCR FAM72 homolog expression correlation\nby paralog")
+## FAM72D not very good...
+
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMvsQPCR_FAM72expr_byParalog.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+#### log2 qPCR (bad, 2 outliers)
+
+- some say if qPCR is measuring doubling relative to reference (2^-ddCt method), 
+    - value is essentially 'fold change'
+    - should log2(fold change) to get it linear
+
+```{r}
+fam72_qPCR_TPMgene_mean.joined.log2qPCR = 
+  fam72_qPCR_TPMgene_mean.joined %>% 
+  mutate(qPCR_mean_log2 = log2(qPCR_mean))
+# fam72_qPCR_TPMgene_mean.joined.log2qPCR
+
+library(ggpubr)
+
+## all
+fam72_qPCR_TPMgene_mean.joined.log2qPCR %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=TPMgene_mean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson") +
+  labs(title = "STAR relax parameters\nTPM vs log2(qPCR) FAM72 homolog expression correlation")
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMvsQPCRlog2_FAM72expr.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+
+
+## grouped by 'Cell_line'
+fam72_qPCR_TPMgene_mean.joined.log2qPCR %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=TPMgene_mean, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson") +
+  labs(title = "STAR relax parameters\nTPM vs log2(qPCR) FAM72 homolog expression correlation\nby cell line")
+## p-value non-sig cuz too little samples
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMvsQPCRlog2_FAM72expr_byCellLine.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+
+## grouped by 'Symbol'
+fam72_qPCR_TPMgene_mean.joined.log2qPCR %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=TPMgene_mean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson") +
+  labs(title = "STAR relax parameters\nTPM vs log2(qPCR) FAM72 homolog expression correlation\nby paralog")
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMvsQPCRlog2_FAM72expr_byParalog.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+- terrible...
+
+#### log2 both (bad)
+
+- some also log2 both...
+- Everaert,2017-Benchmarking of RNA-sequencing analysis workflows using wholetranscriptome RT-qPCR expression data
+
+```{r}
+fam72_qPCR_TPMgene_mean.joined.log2both = 
+  fam72_qPCR_TPMgene_mean.joined %>% 
+  mutate(qPCR_mean_log2 = log2(qPCR_mean)) %>% 
+  mutate(TPMgene_mean_log2 = log2(TPMgene_mean))
+fam72_qPCR_TPMgene_mean.joined.log2both
+
+library(ggpubr)
+
+## all
+fam72_qPCR_TPMgene_mean.joined.log2both %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=TPMgene_mean_log2)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson") +
+  labs(title = "STAR relax parameters\nlog2(TPM) vs log2(qPCR) FAM72 homolog expression correlation")
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMlog2vsQPCRlog2_FAM72expr.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+
+## grouped by 'Cell_line'
+fam72_qPCR_TPMgene_mean.joined.log2both %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=TPMgene_mean_log2, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson") +
+  labs(title = "STAR relax parameters\nlog2(TPM) vs log2(qPCR) FAM72 homolog expression correlation\nby cell line")
+## p-value non-sig cuz too little samples
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMlog2vsQPCRlog2_FAM72expr_byCellLine.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+
+## grouped by 'Symbol'
+fam72_qPCR_TPMgene_mean.joined.log2both %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=TPMgene_mean_log2)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson") +
+  labs(title = "STAR relax parameters\nlog2(TPM) vs log2(qPCR) FAM72 homolog expression correlation\nby paralog")
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_TPMlog2vsQPCRlog2_FAM72expr_byParalog.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+- a bit better, but still bad...
+
+## -------------------------------------------
+
+## try FPKM
+
+### get replicate mean
+
+```{r}
+FPKM.FAM72.mean = 
+  FPKM.FAM72 %>% 
+  mutate(X293_mean = rowMeans(dplyr::select(., starts_with("293")), na.rm = TRUE)) %>% 
+  mutate(A549_mean = rowMeans(dplyr::select(., starts_with("A549")), na.rm = TRUE)) %>% 
+  mutate(Daudi_mean = rowMeans(dplyr::select(., starts_with("Daudi")), na.rm = TRUE)) %>% 
+  mutate(HCT116_mean = rowMeans(dplyr::select(., starts_with("HCT116")), na.rm = TRUE)) %>% 
+  mutate(MDA231_mean = rowMeans(dplyr::select(., starts_with("MDA231")), na.rm = TRUE)) %>% 
+  mutate(SW480_mean = rowMeans(dplyr::select(., starts_with("SW480")), na.rm = TRUE)) %>% 
+  dplyr::select(Symbol, ends_with("mean"))
+FPKM.FAM72.mean
+
+FPKM.FAM72.mean.long = 
+  FPKM.FAM72.mean %>% 
+  pivot_longer(cols = -Symbol, names_to = "Cell_line", values_to = "FPKMmean") %>% 
+  unite(col = "Symbol_Cell_line", Symbol, Cell_line, sep = "__", remove = F)
+FPKM.FAM72.mean.long
+```
+
+### compare
+
+#### raw values
+
+```{r}
+fam72_qPCR_FPKM_mean.joined = 
+  left_join(fam72_qPCR.mean.long, FPKM.FAM72.mean.long, by=c("Symbol_Cell_line", "Symbol", "Cell_line"))
+fam72_qPCR_FPKM_mean.joined
+
+library(ggpubr)
+
+## all
+fam72_qPCR_FPKM_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=FPKMmean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson")
+## a little worse than TPM
+
+## grouped by 'Cell_line'
+fam72_qPCR_FPKM_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=FPKMmean, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson")
+## a little worse than TPM
+
+## grouped by 'Symbol'
+fam72_qPCR_FPKM_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=FPKMmean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson")
+## a little worse than TPM
+```
+
+#### log2 qPCR (bad)
+
+```{r}
+fam72_qPCR_FPKM_mean.joined.log2qPCR = 
+  fam72_qPCR_FPKM_mean.joined %>% 
+  mutate(qPCR_mean_log2 = log2(qPCR_mean))
+fam72_qPCR_FPKM_mean.joined.log2qPCR
+
+library(ggpubr)
+
+## all
+fam72_qPCR_FPKM_mean.joined.log2qPCR %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=FPKMmean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson")
+
+## grouped by 'Cell_line'
+fam72_qPCR_FPKM_mean.joined.log2qPCR %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=FPKMmean, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson")
+
+## grouped by 'Symbol'
+fam72_qPCR_FPKM_mean.joined.log2qPCR %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=FPKMmean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson")
+```
+
+- same as TPM, terrible...
+
+#### log2 both (bad)
+
+- some also log2 both...
+- Everaert,2017-Benchmarking of RNA-sequencing analysis workflows using wholetranscriptome RT-qPCR expression data
+
+```{r}
+fam72_qPCR_FPKM_mean.joined.log2both = 
+  fam72_qPCR_FPKM_mean.joined %>% 
+  mutate(qPCR_mean_log2 = log2(qPCR_mean)) %>% 
+  mutate(FPKMmean_log2 = log2(FPKMmean))
+fam72_qPCR_FPKM_mean.joined.log2both
+
+library(ggpubr)
+
+## all
+fam72_qPCR_FPKM_mean.joined.log2both %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=FPKMmean_log2)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson")
+
+## grouped by 'Cell_line'
+fam72_qPCR_FPKM_mean.joined.log2both %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=FPKMmean_log2, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson")
+
+## grouped by 'Symbol'
+fam72_qPCR_FPKM_mean.joined.log2both %>% 
+  ggplot(aes(x=qPCR_mean_log2, y=FPKMmean_log2)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson")
+```
+
+- same as TPM, bad
+
+## -------------------------------------------
+
+## try DESeq2 normalized
+
+- https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html
+- best for comparing a single gene, across samples
+
+### DESeq2 normalize
+
+```{r}
+library(DESeq2)
+
+## wrangle count data into matrix
+expected_count.mat = 
+  expected_count %>% 
+  select(-GeneID) %>% 
+  distinct(Symbol, .keep_all=T) %>% 
+  column_to_rownames(var="Symbol") %>% 
+  as.matrix() %>% 
+  round()
+expected_count.mat["FAM72A",]
+expected_count.mat %>% dim() # [1] 59050    12
+
+## make some fake 'conditions' and 'metadata'
+condition = factor(c(rep("cell_line", 12)))
+condition
+metadata = data.frame(row.names=colnames(expected_count.mat), condition)
+metadata
+
+## Create DESeq2Dataset object
+dds <- DESeqDataSetFromMatrix(countData = expected_count.mat, 
+                              colData = metadata, 
+                              design = ~ 1)
+# View(counts(dds))
+
+dds <- estimateSizeFactors(dds)
+sizeFactors(dds)
+  # 293T_S44_L001   293T_S44_L002   A549_S43_L001   A549_S43_L002  Daudi_S41_L001  Daudi_S41_L002 
+  #     1.0110002       0.9965392       0.9215651       0.9004835       1.0005839       0.9816791   
+  # HCT116_S40_L001 HCT116_S40_L002 MDA231_S42_L001 MDA231_S42_L002  SW480_S39_L001  SW480_S39_L002 
+  #     0.9019149       0.8874569       1.2278214       1.1993562       1.1691058       1.1509387 
+
+options(scipen = 999)   ## decimal
+options(scipen = 0)     ## back to sci notation
+DESeq2_normalized_counts <- counts(dds, normalized=TRUE)
+DESeq2_normalized_counts
+
+# write.table(DESeq2_normalized_counts,
+#             file=paste0(data.dir,"wrangled_data/DESeq2_normalized_counts.txt"),
+#             sep="\t", quote=F, col.names=NA)
+
+DESeq2_normalized_counts.FAM72 =
+  DESeq2_normalized_counts %>% 
+  as.data.frame %>% 
+  rownames_to_column(var="Symbol") %>% 
+  filter(str_detect(Symbol, "FAM72")) %>% 
+  arrange(Symbol)
+DESeq2_normalized_counts.FAM72
+
+# write.table(DESeq2_normalized_counts.FAM72,
+#             file=paste0(data.dir,"wrangled_data/DESeq2_normalized_counts.FAM72.txt"),
+#             sep="\t", quote=F, row.names=F)
+```
+
+### get replicate mean
+
+```{r}
+DESeq2norm.FAM72.mean = 
+  DESeq2_normalized_counts.FAM72 %>% 
+  mutate(X293_mean = rowMeans(dplyr::select(., starts_with("293")), na.rm = TRUE)) %>% 
+  mutate(A549_mean = rowMeans(dplyr::select(., starts_with("A549")), na.rm = TRUE)) %>% 
+  mutate(Daudi_mean = rowMeans(dplyr::select(., starts_with("Daudi")), na.rm = TRUE)) %>% 
+  mutate(HCT116_mean = rowMeans(dplyr::select(., starts_with("HCT116")), na.rm = TRUE)) %>% 
+  mutate(MDA231_mean = rowMeans(dplyr::select(., starts_with("MDA231")), na.rm = TRUE)) %>% 
+  mutate(SW480_mean = rowMeans(dplyr::select(., starts_with("SW480")), na.rm = TRUE)) %>% 
+  dplyr::select(Symbol, ends_with("mean"))
+DESeq2norm.FAM72.mean
+
+DESeq2norm.FAM72.mean.long = 
+  DESeq2norm.FAM72.mean %>% 
+  pivot_longer(cols = -Symbol, names_to = "Cell_line", values_to = "DESeq2norm_mean") %>% 
+  unite(col = "Symbol_Cell_line", Symbol, Cell_line, sep = "__", remove = F)
+DESeq2norm.FAM72.mean.long
+```
+
+### compare
+
+#### raw values
+
+```{r}
+fam72_qPCR_DESeq2norm_mean.joined = 
+  left_join(fam72_qPCR.mean.long, DESeq2norm.FAM72.mean.long, by=c("Symbol_Cell_line", "Symbol", "Cell_line"))
+fam72_qPCR_DESeq2norm_mean.joined
+
+library(ggpubr)
+```
+
+##### all (R=0.89, p=9.1e-09)
+
+```{r}
+options(scipen = 0)     ## back to sci notation
+fam72_qPCR_DESeq2norm_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=DESeq2norm_mean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(method="lm", se=F, size=0.5) +
+  stat_cor(method = "pearson") +
+  labs(title = "STAR relax parameters\nDESeq2 normalized vs qPCR FAM72 homolog expression correlation")
+
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_DESeq2normvsQPCR_FAM72expr.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+##### grouped by 'Cell_line'
+
+```{r}
+fam72_qPCR_DESeq2norm_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=DESeq2norm_mean, color=Cell_line)) +
+  geom_point(aes(shape=Symbol)) +
+  geom_smooth(aes(group=Cell_line), method="lm", se=F, size=0.5) +
+  stat_cor(aes(group=Cell_line), method = "pearson") +
+  labs(title = "STAR relax parameters\nDESeq2 normalized vs qPCR FAM72 homolog expression correlation\nby cell line")
+## p-value non-sig cuz too little samples
+
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_DESeq2normvsQPCR_FAM72expr_byCellLine.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+##### grouped by 'Symbol' (FAM72D: R=0.72, p=0.1)
+
+- suppose to be what DESeq2 is best at normalizing
+    - a single gene, across samples
+
+```{r}
+fam72_qPCR_DESeq2norm_mean.joined %>% 
+  ggplot(aes(x=qPCR_mean, y=DESeq2norm_mean)) +
+  geom_point(aes(color=Cell_line, shape=Symbol)) +
+  geom_smooth(aes(group=Symbol), method="lm", se=F, size=0.2, colour="grey") +
+  stat_cor(aes(group=Symbol), method = "pearson") +
+  labs(title = "STAR relax parameters\nDESeq2 normalized vs qPCR FAM72 homolog expression correlation\nby paralog")
+## FAM72A is worse...
+## FAM72D is better
+
+ggsave(filename = paste0(data.dir, "figures/corr_STARrelax_DESeq2normvsQPCR_FAM72expr_byParalog.pdf"), 
+       device = "pdf", width = 6, height = 4, units = "in", dpi = 300)
+```
+
+<br>
+
+# EOF

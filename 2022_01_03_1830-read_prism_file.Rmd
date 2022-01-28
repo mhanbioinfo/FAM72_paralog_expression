@@ -1,0 +1,49 @@
+---
+title: "2022_01_03_1830-read_prism_file"
+author: "Ming"
+date: "`r format(Sys.time(), '%Y_%m_%d_%H_%M')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+require(tidyverse)
+require(ggplot2)
+'%ni%' <- Negate('%in%')
+
+data.dir = "/Users/minghan/GDrive_minghanpughlab/PughLabPMH/_projects/homolog_seq/data/"
+```
+
+# read pzfx
+
+```{r}
+# install.packages("pzfx")
+library(pzfx)
+fam72_qPCR = 
+  read_pzfx(path = paste0(data.dir, 
+                          "FAM72 expression level in human cell lines qPCR updated Jan3-22.pzfx"))
+fam72_qPCR
+
+fam72_qPCR.t = 
+  as_tibble(t(fam72_qPCR %>% column_to_rownames(var = "ROWTITLE")), 
+            rownames = "Samples") %>% 
+  arrange(Samples)
+fam72_qPCR.t %>% head(8) %>% print.data.frame()
+#   Samples   FAM72A FAM72B  FAM72C FAM72D
+# 1  293T_1  6278.23   6084 2252.86 3497.7
+# 2  293T_2  7022.89   6774 2458.24 3680.4
+# 3  293T_3  5971.90   6752 2112.11 3598.8
+# 4  293T_4       NA     NA      NA     NA
+# 5  293T_5       NA     NA      NA     NA
+# 6  293T_6       NA     NA      NA     NA
+# 7  A549_1 6602.39   5736 5714.76 3885.1
+# 8  A549_2 7563.91   6028 5820.97 5133.6
+# ...
+
+# write.csv(x = fam72_qPCR.t, file = paste0(data.dir, "fam72_qPCR.t.csv"), quote = F, row.names = F)
+```
+
+<br>
+
+# EOF
