@@ -36,11 +36,7 @@ TPM_gene =
   arrange(Symbol) %>% 
   select(-GeneID)
 TPM_gene %>% print.data.frame()
-#   Symbol X293T_S44_L001 X293T_S44_L002 A549_S43_L001 A549_S43_L002 Daudi_S41_L001 Daudi_S41_L002 HCT116_S40_L001 HCT116_S40_L002 MDA231_S42_L001 MDA231_S42_L002 SW480_S39_L001 SW480_S39_L002
-# 1 FAM72A          13.06          16.51         16.49          4.19          12.87          13.80           14.76           20.81           16.88           26.99          18.33          24.35
-# 2 FAM72B          10.41          12.85          5.78          2.10          22.61          13.33            1.96            2.04           32.01           15.11           5.41           3.24
-# 3 FAM72C           0.78           0.00          0.76          1.57           1.45           0.75            0.00            0.00            4.00            2.80           0.00           0.00
-# 4 FAM72D           5.16           5.31          2.14          2.23           4.78           2.13            2.09            1.44            5.03            3.96           2.21           1.72
+
 TPM_gene.t = 
   as.tibble(t(TPM_gene %>% column_to_rownames("Symbol")), rownames = "Samples")
 # TPM_gene.t
@@ -67,11 +63,6 @@ TPM_mRNA =
   arrange(Symbol) %>% 
   select(-GeneID)
 TPM_mRNA %>% print.data.frame()
-#   Symbol X293T_S44_L001 X293T_S44_L002 A549_S43_L001 A549_S43_L002 Daudi_S41_L001 Daudi_S41_L002 HCT116_S40_L001 HCT116_S40_L002 MDA231_S42_L001 MDA231_S42_L002 SW480_S39_L001 SW480_S39_L002
-# 1 FAM72A       3.707083       4.045268     4.0435195     2.0669502      3.6859401      3.7865964       3.8836208       4.3792051        4.077243        4.754353       4.196135      4.6058499
-# 2 FAM72B       3.379898       3.683696     2.5310695     1.0703893      4.4988891      3.7366049       0.9708537       1.0285692        5.000451        3.917432       2.435629      1.6959938
-# 3 FAM72C      -0.358454             NA    -0.3959287     0.6507646      0.5360529     -0.4150375              NA              NA        2.000000        1.485427             NA             NA
-# 4 FAM72D       2.367371       2.408712     1.0976108     1.1570437      2.2570106      1.0908534       1.0635029       0.5260688        2.330558        1.985500       1.144046      0.7824086
 
 TPM_mRNA.t = 
   as.tibble(t(TPM_mRNA %>% column_to_rownames("Symbol")), rownames = "Samples")
@@ -497,10 +488,6 @@ dds <- DESeqDataSetFromMatrix(countData = expected_count.mat,
 
 dds <- estimateSizeFactors(dds)
 sizeFactors(dds)
-#  293T_S44_L001   293T_S44_L002   A549_S43_L001   A549_S43_L002  Daudi_S41_L001  Daudi_S41_L002 
-#      1.0389029       1.0113373       0.9041064       0.8652556       1.0142727       0.9752519  
-# HCT116_S40_L001 HCT116_S40_L002 MDA231_S42_L001 MDA231_S42_L002  SW480_S39_L001  SW480_S39_L002 
-#      0.9063638       0.8738586       1.1850304       1.1217014       1.2500868       1.2033610 
 
 options(scipen = 999)   ## decimal
 
